@@ -72,7 +72,7 @@
           .then(response => response.json())
           .then(data => {
             let rows = data;
-            if (rows.length && rows[0][0] === "id") rows = rows.slice(1);
+            if (rows.length && rows[0][0].toLowerCase() === "id") rows = rows.slice(1);
             setRows(rows.map(r => ({
               id: r[0] || "",
               week: r[1] || "",
