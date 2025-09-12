@@ -31,9 +31,11 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Our app (single-file). No Recharts now -->
+    <!-- App code -->
     <script type="text/babel" data-presets="react">
-      const {useState, useMemo} = React;
+      const {useState, useMemo, useEffect} = React;
+
+      const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbytDjscC8jkMM05CYeDNxiG0wQwx-V_5SXjEIac_TxWE9dap6jzhhcJKjs73trj0pk/exec";
 
       const UNIT_LIST = [
         "Andrew","Asshu","Batsby","Beyontin","Borgne","Cachi","Cachi [The Guard]","Celince","Chiaki",
@@ -63,26 +65,70 @@
         return byDef;
       }
 
-      const DEMO = [
-        { id: crypto.randomUUID(), week: "S36", defense: ["Rin","Lilith","Helkid"], offense: ["Andrew","Freya","Vice"], result: "Win", notes: "Turn control + cleanse" },
-        { id: crypto.randomUUID(), week: "S36", defense: ["Rin","Lilith","Helkid"], offense: ["Kazami Kazuyo","Sybil","Victor"], result: "Lose", notes: "Outsped" },
-        { id: crypto.randomUUID(), week: "S37", defense: ["Sania","Khloros","Beyontin"], offense: ["Lily","Holden","Valerian"], result: "Win", notes: "Sustain + strip" },
-        { id: crypto.randomUUID(), week: "S37", defense: ["Sania","Khloros","Beyontin"], offense: ["Mio","Xiada","Yang"], result: "Lose" },
-        { id: crypto.randomUUID(), week: "S38", defense: ["Dorothy","Rahu","Kraken"], offense: ["Oboro","Tsukiyo Mi","Veronika"], result: "Win", notes: "Immunity helps" },
-        { id: crypto.randomUUID(), week: "S38", defense: ["Dorothy","Rahu","Kraken"], offense: ["Plume","Rosa","Nell"], result: "Lose" }
-      ];
+      // Fetch all fight entries from Google Sheets
+      function fetchSheetData(setRows){
+        fetch(GOOGLE_WEB_APP_URL)
+          .then(response => response.json())
+          .then(data => {
+            let rows = data;
+            if (rows.length && rows[0][0] === "id") rows = rows.slice(1);
+            setRows(rows.map(r => ({
+              id: r[0] || "",
+              week: r[1] || "",
+              defense: [r[2]||"", r[3]||"", r[4]||""],
+              offense: [r[5]||"", r[6]||"", r[7]||""],
+              result: r[8] || "",
+              notes: r[9] || ""
+            })));
+          })
+          .catch(err => {
+            console.error("Error loading from Google Sheets:", err);
+          });
+      }
+
+      // Add a fight entry to Google Sheets
+      function addEntryToSheet(entry, setRows, setNewEntry){
+        fetch(GOOGLE_WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            id: entry.id,
+            week: entry.week,
+            def1: entry.defense[0],
+            def2: entry.defense[1],
+            def3: entry.defense[2],
+            off1: entry.offense[0],
+            off2: entry.offense[1],
+            off3: entry.offense[2],
+            result: entry.result,
+            notes: entry.notes
+          }),
+          headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.text())
+        .then(data => {
+          alert(data); // Should say "Success"
+          setNewEntry({ id: crypto.randomUUID(), week: "", defense:["","",""], offense:["","",""], result:"Win", notes:"" });
+          fetchSheetData(setRows); // reload list after adding
+        })
+        .catch(err => {
+          alert("Failed to add entry: " + err);
+        });
+      }
 
       function App(){
-        const [rows, setRows] = useState(DEMO);
+        const [rows, setRows] = useState([]);
         const [tab, setTab] = useState("defense");
         const [searchDefense, setSearchDefense] = useState("");
         const [includeUnit, setIncludeUnit] = useState("");
         const [excludeUnit, setExcludeUnit] = useState("");
         const [exactMatch, setExactMatch] = useState(false);
 
+        useEffect(() => {
+          fetchSheetData(setRows);
+        }, []);
+
         const defenses = useMemo(()=> aggregate(rows), [rows]);
 
-        // --- CASE INSENSITIVE SEARCH LOGIC ---
         const filteredDefenses = useMemo(()=>{
           const items = Array.from(defenses.values());
           const s = searchDefense.trim();
@@ -100,8 +146,11 @@
           });
         }, [defenses, searchDefense, includeUnit, excludeUnit, exactMatch]);
 
-        const [selectedDefenseKey, setSelectedDefenseKey] = useState(null);
-        const selectedDefense = selectedDefenseKey ? defenses.get(selectedDefenseKey) : null;
+        const unitSet = useMemo(()=>{
+          const s = new Set(UNIT_LIST);
+          rows.forEach(r => [...r.defense, ...r.offense].forEach(u => u && s.add(u)));
+          return Array.from(s).sort((a,b)=> a.localeCompare(b));
+        }, [rows]);
 
         const [newEntry, setNewEntry] = useState({
           id: crypto.randomUUID(), week: "", defense:["","",""], offense:["","",""], result:"Win", notes:""
@@ -109,59 +158,30 @@
 
         function addEntry(){
           if(!newEntry.defense.every(Boolean) || !newEntry.offense.every(Boolean)) return;
-          const entry = { ...newEntry, id: crypto.randomUUID() };
-          setRows(r => [entry, ...r]);
-          setNewEntry({ id: crypto.randomUUID(), week: newEntry.week, defense:["","",""], offense:["","",""], result:"Win", notes:"" });
+          addEntryToSheet(newEntry, setRows, setNewEntry);
         }
 
         function deleteEntry(id){
-          setRows(r => r.filter(x => x.id !== id));
+          alert("To delete an entry, please remove it manually in the Google Sheet."); // Google Apps Script would need extension to support deletion
         }
-
-        function exportCSV(){
-          const head = ["id","week","def1","def2","def3","off1","off2","off3","result","notes"];
-          const body = rows.map(r => [r.id,r.week||"",r.defense[0],r.defense[1],r.defense[2],r.offense[0],r.offense[1],r.offense[2],r.result,r.notes||""]);
-          const csv = [head, ...body].map(a => a.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");
-          const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = "etheria-gvg-data.csv"; a.click(); URL.revokeObjectURL(url);
-        }
-
-        function exportJSON(){
-          const blob = new Blob([JSON.stringify(rows,null,2)], {type:"application/json"});
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = "etheria-gvg-data.json"; a.click(); URL.revokeObjectURL(url);
-        }
-
-        const unitSet = useMemo(()=>{
-          const s = new Set(UNIT_LIST);
-          rows.forEach(r => [...r.defense, ...r.offense].forEach(u => u && s.add(u)));
-          return Array.from(s).sort((a,b)=> a.localeCompare(b));
-        }, [rows]);
 
         return (
           <div className="container">
             <header className="row" style={{justifyContent:"space-between", alignItems:"flex-end"}}>
               <div>
                 <h1>Etheria Restart – GW Counter Tracker</h1>
-                <div className="muted">Record each 3v3 fight to find the best counters against popular defenses.</div>
+                <div className="muted">Records 3v3 fights & counters. Data syncs with Google Sheets for guild sharing.</div>
               </div>
               <div className="row">
-                <button className="btn secondary" onClick={exportCSV}>Export CSV</button>
-                <button className="btn secondary" onClick={exportJSON}>Export JSON</button>
+                <a className="btn secondary" href="https://docs.google.com/spreadsheets/d/1M4m3kTA4pYx3tJ2-bCgR7xYj0vXkQe8ZlJrJXyxh5jJc/copy" target="_blank" rel="noopener noreferrer">Google Sheet Template</a>
               </div>
             </header>
-
-            <div className="row" style={{alignItems:"center"}}>
-              <button className="btn" onClick={()=> setRows(DEMO)}>Load Sample Etheria Data</button>
-              <span className="pill">Replaces current data in memory</span>
-            </div>
 
             <div className="card" style={{padding:"16px"}}>
               <h2>Search & Filters</h2>
               <div className="grid grid-cols-12">
                 <div className="col-2" style={{gridColumn:"span 4"}}>
-                  <label>Search a defense (comma-separated)</label>
+                  <label>Defense (comma-separated)</label>
                   <input className="input" placeholder="Unit A, Unit B, Unit C" value={searchDefense} onChange={(e)=> setSearchDefense(e.target.value)}/>
                   <div className="row" style={{marginTop:8, alignItems:"center"}}>
                     <input type="checkbox" checked={exactMatch} onChange={(e)=> setExactMatch(e.target.checked)} id="exact"/>
@@ -201,7 +221,6 @@
                             <div><strong>{d.defense.join(" · ")}</strong></div>
                             <button className="btn" onClick={() => {
                               setTab('defense');
-                              setRows(rows);
                               window.selectedDefenseKey = key;
                             }}>View counters</button>
                           </div>
