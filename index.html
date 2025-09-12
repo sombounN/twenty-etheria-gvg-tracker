@@ -118,7 +118,6 @@
 
       function App(){
         const [rows, setRows] = useState([]);
-        const [tab, setTab] = useState("defense");
         const [searchDefense, setSearchDefense] = useState("");
         const [includeUnit, setIncludeUnit] = useState("");
         const [excludeUnit, setExcludeUnit] = useState("");
@@ -205,16 +204,10 @@
               </div>
             </div>
 
-            <div className="row" style={{marginTop:12, gap:8}}>
-              <button className="btn" onClick={()=> setTab("defense")} disabled={tab==="defense"}>🔎 Search Defense</button>
-              <button className="btn" onClick={()=> setTab("offense")} disabled={tab==="offense"}>🛡️ Build Defense</button>
-            </div>
-
-            {tab==="defense" && (
-              <div style={{marginTop:12}}>
-                <div className="card" style={{padding:"12px"}}>
-                  <h2>Matching Defenses</h2>
-                  <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
+            <div style={{marginTop:12}}>
+              <div className="card" style={{padding:"12px"}}>
+                <h2>Matching Defenses</h2>
+                <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
                     {filteredDefenses.map((d) => {
                       const wr = d.count ? Math.round((d.wins/d.count)*100) : 0;
                       const key = trioKey(d.defense);
@@ -253,8 +246,7 @@
                     </div>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
 
             <div className="card" style={{padding:"16px", marginTop:12}}>
               <h2>Add a fight</h2>
