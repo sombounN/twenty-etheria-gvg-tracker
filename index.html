@@ -118,17 +118,18 @@
 
       function App(){
         const [rows, setRows] = useState([]);
-        const [tab, setTab] = useState("defense");
         const [searchDefense, setSearchDefense] = useState("");
         const [includeUnit, setIncludeUnit] = useState("");
         const [excludeUnit, setExcludeUnit] = useState("");
         const [exactMatch, setExactMatch] = useState(false);
+        const [selectedDefenseKey, setSelectedDefenseKey] = useState(null);
 
         useEffect(() => {
           fetchSheetData(setRows);
         }, []);
 
         const defenses = useMemo(()=> aggregate(rows), [rows]);
+        const selectedDefense = useMemo(() => selectedDefenseKey ? defenses.get(selectedDefenseKey) : null, [defenses, selectedDefenseKey]);
 
         const filteredDefenses = useMemo(()=>{
           const items = Array.from(defenses.values());
@@ -203,13 +204,7 @@
               </div>
             </div>
 
-            <div className="row" style={{marginTop:12, gap:8}}>
-              <button className="btn" onClick={()=> setTab("defense")} disabled={tab==="defense"}>🔎 Search Defense</button>
-              <button className="btn" onClick={()=> setTab("offense")} disabled={tab==="offense"}>🛡️ Build Defense</button>
-            </div>
-
-            {tab==="defense" && (
-              <div style={{marginTop:12}}>
+            <div style={{marginTop:12}}>
                 <div className="card" style={{padding:"12px"}}>
                   <h2>Matching Defenses</h2>
                   <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
@@ -220,10 +215,7 @@
                         <div key={key} className="card" style={{padding:12}}>
                           <div className="row" style={{justifyContent:"space-between"}}>
                             <div><strong>{d.defense.join(" · ")}</strong></div>
-                            <button className="btn" onClick={() => {
-                              setTab('defense');
-                              window.selectedDefenseKey = key;
-                            }}>View counters</button>
+                            <button className="btn" onClick={() => setSelectedDefenseKey(key)}>View counters</button>
                           </div>
                           <div className="muted" style={{marginTop:6}}>{d.count} fights • Overall WR {wr}%</div>
                         </div>
@@ -231,8 +223,30 @@
                     })}
                   </div>
                 </div>
+                {selectedDefense && (
+                  <div className="card" style={{padding:"12px", marginTop:12}}>
+                    <div className="row" style={{justifyContent:"space-between"}}>
+                      <h2>Counters for {selectedDefense.defense.join(" · ")}</h2>
+                      <button className="btn" onClick={() => setSelectedDefenseKey(null)}>Close</button>
+                    </div>
+                    <div style={{marginTop:12}}>
+                      {Array.from(selectedDefense.offenses.values()).map(o => {
+                        const wr = o.total ? Math.round((o.wins/o.total)*100) : 0;
+                        const k = trioKey(o.offense);
+                        return (
+                          <div key={k} className="row" style={{justifyContent:"space-between", padding:"4px 0"}}>
+                            <div>{o.offense.join(" · ")}</div>
+                            <div className="muted">{o.total} fights • WR {wr}%</div>
+                          </div>
+                        );
+                      })}
+                      {!selectedDefense.offenses.size && (
+                        <div className="muted">No counters recorded.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
 
             <div className="card" style={{padding:"16px", marginTop:12}}>
               <h2>Add a fight</h2>
