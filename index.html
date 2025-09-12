@@ -222,10 +222,7 @@
                         <div key={key} className="card" style={{padding:12}}>
                           <div className="row" style={{justifyContent:"space-between"}}>
                             <div><strong>{d.defense.join(" · ")}</strong></div>
-                            <button className="btn" onClick={() => {
-                              setTab('defense');
-                              setSelectedDefenseKey(key);
-                            }}>View counters</button>
+                            <button className="btn" onClick={() => setSelectedDefenseKey(key)}>View counters</button>
                           </div>
                           <div className="muted" style={{marginTop:6}}>{d.count} fights • Overall WR {wr}%</div>
                         </div>
