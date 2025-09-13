@@ -141,6 +141,7 @@
         const [excludeUnit, setExcludeUnit] = useState("");
         const [exactMatch, setExactMatch] = useState(false);
         const [selectedDefenseKey, setSelectedDefenseKey] = useState(null);
+        const [showMatches, setShowMatches] = useState(false);
         const [showHistory, setShowHistory] = useState(false);
 
         useEffect(() => {
@@ -227,8 +228,17 @@
 
             <div style={{marginTop:12}}>
               <div className="card" style={{padding:"12px"}}>
-                <h2>Matching Defenses</h2>
-                <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
+                <div className="row" style={{justifyContent:"space-between", alignItems:"center"}}>
+                  <h2>Matching Defenses</h2>
+                  <button className="btn" onClick={() => {
+                    if(showMatches) setSelectedDefenseKey(null);
+                    setShowMatches(s => !s);
+                  }}>
+                    {showMatches ? "Hide matches" : "Show matches"}
+                  </button>
+                </div>
+                {showMatches && (
+                  <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
                     {filteredDefenses.map((d) => {
                       const wr = d.count ? Math.round((d.wins/d.count)*100) : 0;
                       const key = trioKey(d.defense);
@@ -243,25 +253,32 @@
                       );
                     })}
                   </div>
-                </div>
-                {selectedDefense && (
-                  <div className="card" style={{padding:"12px", marginTop:12}}>
-                    <div className="row" style={{justifyContent:"space-between"}}>
-                      <h2>Counters for {selectedDefense.defense.join(" · ")}</h2>
-                      <button className="btn" onClick={() => setSelectedDefenseKey(null)}>Close</button>
-                    </div>
-                    <div style={{marginTop:12}}>
-                      {Array.from(selectedDefense.offenses.values()).map(o => {
-                        const wr = o.total ? Math.round((o.wins/o.total)*100) : 0;
+                )}
+              </div>
+              {showMatches && selectedDefense && (
+                <div className="card" style={{padding:"12px", marginTop:12}}>
+                  <div className="row" style={{justifyContent:"space-between"}}>
+                    <h2>Counters for {selectedDefense.defense.join(" · ")}</h2>
+                    <button className="btn" onClick={() => setSelectedDefenseKey(null)}>Close</button>
+                  </div>
+                  <div style={{marginTop:12}}>
+                    {Array.from(selectedDefense.offenses.values())
+                      .sort((a, b) => {
+                        const awr = a.total ? a.wins / a.total : 0;
+                        const bwr = b.total ? b.wins / b.total : 0;
+                        return bwr - awr;
+                      })
+                      .map((o) => {
+                        const wr = o.total ? Math.round((o.wins / o.total) * 100) : 0;
                         const k = trioKey(o.offense);
                         const notes = o.notes.join("; ");
                         return (
-                          <div key={k} style={{padding:"4px 0"}}>
-                            <div className="row" style={{justifyContent:"space-between"}}>
+                          <div key={k} style={{ padding: "4px 0" }}>
+                            <div className="row" style={{ justifyContent: "space-between" }}>
                               <div>
                                 {o.offense.join(" · ")}
                                 {notes && (
-                                  <span className="muted" style={{marginLeft:8}}>– {notes}</span>
+                                  <span className="muted" style={{ marginLeft: 8 }}>– {notes}</span>
                                 )}
                               </div>
                               <div className="muted">{o.total} fights • WR {wr}%</div>
@@ -269,12 +286,12 @@
                           </div>
                         );
                       })}
-                      {!selectedDefense.offenses.size && (
-                        <div className="muted">No counters recorded.</div>
-                      )}
-                    </div>
+                    {!selectedDefense.offenses.size && (
+                      <div className="muted">No counters recorded.</div>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
             </div>
 
             <div className="card" style={{padding:"16px", marginTop:12}}>
