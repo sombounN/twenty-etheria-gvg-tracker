@@ -262,7 +262,9 @@
                     <button className="btn" onClick={() => setSelectedDefenseKey(null)}>Close</button>
                   </div>
                   <div style={{marginTop:12}}>
-                    {Array.from(selectedDefense.offenses.values()).map(o => {
+                    {Array.from(selectedDefense.offenses.values())
+                      .sort((a, b) => (b.wins/b.total) - (a.wins/a.total))
+                      .map(o => {
                       const wr = o.total ? Math.round((o.wins/o.total)*100) : 0;
                       const k = trioKey(o.offense);
                       const notes = o.notes.join("; ");
