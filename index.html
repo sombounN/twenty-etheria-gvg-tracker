@@ -59,9 +59,10 @@
           const d = byDef.get(k);
           d.count++; if(r.result==="Win") d.wins++;
           const ok = trioKey(r.offense);
-          if(!d.offenses.has(ok)) d.offenses.set(ok, { offense: norm(r.offense), wins:0, total:0 });
+          if(!d.offenses.has(ok)) d.offenses.set(ok, { offense: norm(r.offense), wins:0, total:0, notes: [] });
           const o = d.offenses.get(ok);
           o.total++; if(r.result==="Win") o.wins++;
+          if(r.notes) o.notes.push(r.notes);
         }
         return byDef;
       }
@@ -118,7 +119,6 @@
 
       function App(){
         const [rows, setRows] = useState([]);
-        const [tab, setTab] = useState("defense");
         const [searchDefense, setSearchDefense] = useState("");
         const [includeUnit, setIncludeUnit] = useState("");
         const [excludeUnit, setExcludeUnit] = useState("");
@@ -205,16 +205,10 @@
               </div>
             </div>
 
-            <div className="row" style={{marginTop:12, gap:8}}>
-              <button className="btn" onClick={()=> setTab("defense")} disabled={tab==="defense"}>🔎 Search Defense</button>
-              <button className="btn" onClick={()=> setTab("offense")} disabled={tab==="offense"}>🛡️ Build Defense</button>
-            </div>
-
-            {tab==="defense" && (
-              <div style={{marginTop:12}}>
-                <div className="card" style={{padding:"12px"}}>
-                  <h2>Matching Defenses</h2>
-                  <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
+            <div style={{marginTop:12}}>
+              <div className="card" style={{padding:"12px"}}>
+                <h2>Matching Defenses</h2>
+                <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))"}}>
                     {filteredDefenses.map((d) => {
                       const wr = d.count ? Math.round((d.wins/d.count)*100) : 0;
                       const key = trioKey(d.defense);
@@ -222,10 +216,7 @@
                         <div key={key} className="card" style={{padding:12}}>
                           <div className="row" style={{justifyContent:"space-between"}}>
                             <div><strong>{d.defense.join(" · ")}</strong></div>
-                            <button className="btn" onClick={() => {
-                              setTab('defense');
-                              setSelectedDefenseKey(key);
-                            }}>View counters</button>
+                            <button className="btn" onClick={() => setSelectedDefenseKey(key)}>View counters</button>
                           </div>
                           <div className="muted" style={{marginTop:6}}>{d.count} fights • Overall WR {wr}%</div>
                         </div>
@@ -244,9 +235,11 @@
                         const wr = o.total ? Math.round((o.wins/o.total)*100) : 0;
                         const k = trioKey(o.offense);
                         return (
-                          <div key={k} className="row" style={{justifyContent:"space-between", padding:"4px 0"}}>
-                            <div>{o.offense.join(" · ")}</div>
-                            <div className="muted">{o.total} fights • WR {wr}%</div>
+                          <div key={k} style={{padding:"4px 0"}}>
+                            <div className="row" style={{justifyContent:"space-between"}}>
+                              <div>{o.offense.join(" · ")}{o.notes.length ? " - " + o.notes.join("; ") : ""}</div>
+                              <div className="muted">{o.total} fights • WR {wr}%</div>
+                            </div>
                           </div>
                         );
                       })}
@@ -256,8 +249,7 @@
                     </div>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
 
             <div className="card" style={{padding:"16px", marginTop:12}}>
               <h2>Add a fight</h2>
