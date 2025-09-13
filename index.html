@@ -262,30 +262,30 @@
                     <button className="btn" onClick={() => setSelectedDefenseKey(null)}>Close</button>
                   </div>
                   <div style={{marginTop:12}}>
-                    {Array.from(selectedDefense.offenses.values())
-                      .sort((a, b) => {
-                        const awr = a.total ? a.wins / a.total : 0;
-                        const bwr = b.total ? b.wins / b.total : 0;
-                        return bwr - awr;
-                      })
-                      .map((o) => {
-                        const wr = o.total ? Math.round((o.wins / o.total) * 100) : 0;
-                        const k = trioKey(o.offense);
-                        const noteText = o.notes.join("; ");
-                        return (
-                          <div key={k} style={{ padding: "4px 0" }}>
-                            <div className="row" style={{ justifyContent: "space-between" }}>
-                              <div>
-                                {o.offense.join(" · ")}
-                                {noteText && (
-                                  <span className="muted" style={{ marginLeft: 8 }}>– {noteText}</span>
-                                )}
+                      {Array.from(selectedDefense.offenses.values())
+                        .sort((a, b) => {
+                          const awr = a.total ? a.wins / a.total : 0;
+                          const bwr = b.total ? b.wins / b.total : 0;
+                          return bwr - awr;
+                        })
+                        .map((o) => {
+                          const wr = o.total ? Math.round((o.wins / o.total) * 100) : 0;
+                          const k = trioKey(o.offense);
+                          const notes = o.notes.join("; ");
+                          return (
+                            <div key={k} style={{ padding: "4px 0" }}>
+                              <div className="row" style={{ justifyContent: "space-between" }}>
+                                <div>
+                                  {o.offense.join(" · ")}
+                                  {notes && (
+                                    <span className="muted" style={{ marginLeft: 8 }}>– {notes}</span>
+                                  )}
+                                </div>
+                                <div className="muted">{o.total} fights • WR {wr}%</div>
                               </div>
-                              <div className="muted">{o.total} fights • WR {wr}%</div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     {!selectedDefense.offenses.size && (
                       <div className="muted">No counters recorded.</div>
                     )}
