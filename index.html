@@ -31,6 +31,9 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <script type="text/babel" src="src/components/Toast.jsx"></script>
+    <script type="text/babel" src="src/components/ConfirmationModal.jsx"></script>
+
     <!-- App code -->
     <script type="text/babel" data-presets="react">
       const {useState, useMemo, useEffect} = React;
@@ -89,7 +92,7 @@
       }
 
       // Add a fight entry to Google Sheets
-      function addEntryToSheet(entry, setRows, setNewEntry){
+      function addEntryToSheet(entry, setRows, setNewEntry, setToast){
         fetch(GOOGLE_WEB_APP_URL, {
           method: 'POST',
           body: JSON.stringify({
@@ -108,17 +111,17 @@
         })
         .then(response => response.text())
         .then(data => {
-          alert(data); // Should say "Success"
+          setToast({ message: data, type: 'success' });
           setNewEntry({ id: crypto.randomUUID(), week: "", defense:["","",""], offense:["","",""], result:"Win", notes:"" });
           fetchSheetData(setRows); // reload list after adding
         })
         .catch(err => {
-          alert("Failed to add entry: " + err);
+          setToast({ message: "Failed to add entry: " + err, type: 'error' });
         });
       }
 
       // Delete a fight entry from Google Sheets
-      function deleteEntryFromSheet(id, setRows){
+      function deleteEntryFromSheet(id, setRows, setToast){
         fetch(GOOGLE_WEB_APP_URL, {
           method: 'POST',
           body: JSON.stringify({ action: 'delete', id }),
@@ -126,11 +129,11 @@
         })
         .then(response => response.text())
         .then(data => {
-          alert(data);
+          setToast({ message: data, type: 'success' });
           fetchSheetData(setRows);
         })
         .catch(err => {
-          alert("Failed to delete entry: " + err);
+          setToast({ message: "Failed to delete entry: " + err, type: 'error' });
         });
       }
 
@@ -143,6 +146,8 @@
         const [selectedDefenseKey, setSelectedDefenseKey] = useState(null);
         const [showMatches, setShowMatches] = useState(false);
         const [showHistory, setShowHistory] = useState(false);
+        const [toast, setToast] = useState({ message: '', type: 'success' });
+        const [toDeleteId, setToDeleteId] = useState(null);
 
         useEffect(() => {
           fetchSheetData(setRows);
@@ -180,16 +185,15 @@
 
         function addEntry(){
           if(!newEntry.defense.every(Boolean) || !newEntry.offense.every(Boolean)) return;
-          addEntryToSheet(newEntry, setRows, setNewEntry);
+          addEntryToSheet(newEntry, setRows, setNewEntry, setToast);
         }
 
         function deleteEntry(id){
-          if(confirm("Delete this entry?")){
-            deleteEntryFromSheet(id, setRows);
-          }
+          setToDeleteId(id);
         }
 
         return (
+          <>
           <div className="container">
             <header className="row" style={{justifyContent:"space-between", alignItems:"flex-end"}}>
               <div>
@@ -205,20 +209,20 @@
               <h2>Search & Filters</h2>
               <div className="grid grid-cols-12">
                 <div className="col-2" style={{gridColumn:"span 4"}}>
-                  <label>Defense (comma-separated)</label>
-                  <input className="input" placeholder="Unit A, Unit B, Unit C" value={searchDefense} onChange={(e)=> setSearchDefense(e.target.value)}/>
+                  <label htmlFor="search-defense">Defense (comma-separated)</label>
+                  <input id="search-defense" className="input" placeholder="Unit A, Unit B, Unit C" value={searchDefense} onChange={(e)=> setSearchDefense(e.target.value)}/>
                   <div className="row" style={{marginTop:8, alignItems:"center"}}>
                     <input type="checkbox" checked={exactMatch} onChange={(e)=> setExactMatch(e.target.checked)} id="exact"/>
                     <label htmlFor="exact">Exact match (full trio)</label>
                   </div>
                 </div>
                 <div className="col-2" style={{gridColumn:"span 4"}}>
-                  <label>Include a unit</label>
-                  <input className="input" list="units" placeholder="Unit name" value={includeUnit} onChange={(e)=> setIncludeUnit(e.target.value)}/>
+                  <label htmlFor="include-unit">Include a unit</label>
+                  <input id="include-unit" className="input" list="units" placeholder="Unit name" value={includeUnit} onChange={(e)=> setIncludeUnit(e.target.value)}/>
                 </div>
                 <div className="col-2" style={{gridColumn:"span 4"}}>
-                  <label>Exclude a unit</label>
-                  <input className="input" list="units" placeholder="Unit name" value={excludeUnit} onChange={(e)=> setExcludeUnit(e.target.value)}/>
+                  <label htmlFor="exclude-unit">Exclude a unit</label>
+                  <input id="exclude-unit" className="input" list="units" placeholder="Unit name" value={excludeUnit} onChange={(e)=> setExcludeUnit(e.target.value)}/>
                 </div>
                 <datalist id="units">
                   {unitSet.map(u => <option key={u} value={u}></option>)}
@@ -294,13 +298,13 @@
               <h2>Add a fight</h2>
               <div className="grid grid-cols-12">
                 <div style={{gridColumn:"span 2"}}>
-                  <label>Week (optional)</label>
-                  <input className="input" placeholder="S38" value={newEntry.week} onChange={(e)=> setNewEntry(n => ({...n, week: e.target.value}))}/>
+                  <label htmlFor="week">Week (optional)</label>
+                  <input id="week" className="input" placeholder="S38" value={newEntry.week} onChange={(e)=> setNewEntry(n => ({...n, week: e.target.value}))}/>
                 </div>
                 {[0,1,2].map(i => (
                   <div key={"def-"+i} style={{gridColumn:"span 2"}}>
-                    <label>Defender {i+1}</label>
-                    <input className="input" list="units" placeholder="Unit" value={newEntry.defense[i]} onChange={(e)=>{
+                    <label htmlFor={`defender-${i}`}>Defender {i+1}</label>
+                    <input id={`defender-${i}`} className="input" list="units" placeholder="Unit" value={newEntry.defense[i]} onChange={(e)=>{
                       const v = e.target.value;
                       setNewEntry(n => ({...n, defense: [...n.defense.slice(0,i), v, ...n.defense.slice(i+1)]}));
                     }}/>
@@ -308,8 +312,8 @@
                 ))}
                 {[0,1,2].map(i => (
                   <div key={"off-"+i} style={{gridColumn:"span 2"}}>
-                    <label>Attacker {i+1}</label>
-                    <input className="input" list="units" placeholder="Unit" value={newEntry.offense[i]} onChange={(e)=>{
+                    <label htmlFor={`attacker-${i}`}>Attacker {i+1}</label>
+                    <input id={`attacker-${i}`} className="input" list="units" placeholder="Unit" value={newEntry.offense[i]} onChange={(e)=>{
                       const v = e.target.value;
                       setNewEntry(n => ({...n, offense: [...n.offense.slice(0,i), v, ...n.offense.slice(i+1)]}));
                     }}/>
@@ -324,8 +328,8 @@
                   </div>
                 </div>
                 <div style={{gridColumn:"span 10"}}>
-                  <label>Notes</label>
-                  <input className="input" placeholder="Observations (gear, speed tuning, conditions, etc.)" value={newEntry.notes} onChange={(e)=> setNewEntry(n => ({...n, notes: e.target.value}))}/>
+                  <label htmlFor="notes">Notes</label>
+                  <input id="notes" className="input" placeholder="Observations (gear, speed tuning, conditions, etc.)" value={newEntry.notes} onChange={(e)=> setNewEntry(n => ({...n, notes: e.target.value}))}/>
                 </div>
                 <div style={{gridColumn:"span 2", display:"flex", alignItems:"end"}}>
                   <button className="btn" onClick={addEntry}>Add</button>
@@ -366,6 +370,14 @@
               )}
             </div>
           </div>
+          <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
+          <ConfirmationModal
+            isOpen={toDeleteId !== null}
+            message="Delete this entry?"
+            onConfirm={() => { deleteEntryFromSheet(toDeleteId, setRows, setToast); setToDeleteId(null); }}
+            onCancel={() => setToDeleteId(null)}
+          />
+          </>
         );
       }
 
